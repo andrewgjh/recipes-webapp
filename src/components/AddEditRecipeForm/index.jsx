@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDate, getTodayString } from "../../utils/helpers.js";
+import ImageUploadPreview from "../ImageUploadPreview/index.jsx";
 
 function AddEditRecipeForm({
   existingRecipe,
@@ -15,6 +16,7 @@ function AddEditRecipeForm({
       setDirections(existingRecipe.directions);
       setPublishDate(formatDate(existingRecipe.publishDate));
       setIngredients(existingRecipe.ingredients);
+      setImageUrl(existingRecipe.imageUrl);
     } else {
       resetForm();
     }
@@ -25,6 +27,7 @@ function AddEditRecipeForm({
   const [directions, setDirections] = useState("");
   const [ingredients, setIngredients] = useState([]);
   const [ingredientName, setIngredientName] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const handleAddIngredient = e => {
     if (e.key && e.key !== "Enter") {
       return;
@@ -37,13 +40,19 @@ function AddEditRecipeForm({
     setIngredients([...ingredients, ingredientName]);
     setIngredientName("");
   };
-  const handleRecipeFormSubmit = e => {
+  const handleRecipeFormSubmit = async e => {
     e.preventDefault();
     if (e.keyCode === 13) {
       return;
     }
     if (ingredients.length === 0) {
       alert("Ingredients cannot be empty. Please add at least one ingredient");
+      return;
+    }
+    if (!imageUrl) {
+      alert(
+        "Missing a Picture File for this Recipe. Please upload to continue"
+      );
       return;
     }
     const isPublished = new Date(publishDate) <= new Date();
@@ -54,6 +63,7 @@ function AddEditRecipeForm({
       publishDate: new Date(publishDate),
       isPublished,
       ingredients,
+      imageUrl,
     };
     if (existingRecipe) {
       handleUpdateRecipe(newRecipe, existingRecipe.id);
@@ -68,6 +78,7 @@ function AddEditRecipeForm({
     setDirections("");
     setPublishDate(getTodayString());
     setIngredients([]);
+    setImageUrl("");
   }
   return (
     <form
@@ -76,6 +87,19 @@ function AddEditRecipeForm({
     >
       {existingRecipe ? <h2>Update the Recipe</h2> : <h2>Add a new Recipe</h2>}
       <div className="top-form-section">
+        <div className="image-input-box">
+          Recipe Image{" "}
+          <ImageUploadPreview
+            basePath="recipes"
+            existingImageUrl={imageUrl}
+            handleUploadFinish={downloadUrl => {
+              setImageUrl(downloadUrl);
+            }}
+            handleUploadCancel={() => {
+              setImageUrl("");
+            }}
+          />
+        </div>
         <div className="fields">
           <label className="recipe-label input-label">
             Recipe Name:

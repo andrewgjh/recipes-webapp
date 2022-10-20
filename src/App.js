@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import FirebaseAuthService from "./FirebaseAuthService";
 import LoginForm from "./components/LoginForm";
 import AddEditRecipeForm from "./components/AddEditRecipeForm";
@@ -15,71 +15,68 @@ function App() {
   const [orderBy, setOrderBy] = useState("publishDateDesc");
   const [recipesPerPage, setRecipesPerPage] = useState(3);
 
-  const fetchRecipes = useCallback(
-    async (cursorId = "") => {
-      let queries = [];
-      let fetchedRecipes = [];
-      if (categoryFilter) {
-        queries.push({
-          field: "category",
-          condition: "==",
-          value: categoryFilter,
-        });
+  const fetchRecipes = async (cursorId = "") => {
+    let queries = [];
+    let fetchedRecipes = [];
+    if (categoryFilter) {
+      queries.push({
+        field: "category",
+        condition: "==",
+        value: categoryFilter,
+      });
+    }
+    if (!user) {
+      queries.push({
+        field: "isPublished",
+        condition: "==",
+        value: true,
+      });
+    }
+    const orderByField = "publishDate";
+    let orderByDirection;
+    if (orderBy) {
+      switch (orderBy) {
+        case "publishDateAsc":
+          orderByDirection = "asc";
+          break;
+        case "publishDateDesc":
+          orderByDirection = "desc";
+          break;
+        default:
+          break;
       }
-      if (!user) {
-        queries.push({
-          field: "isPublished",
-          condition: "==",
-          value: true,
-        });
-      }
-      const orderByField = "publishDate";
-      let orderByDirection;
-      if (orderBy) {
-        switch (orderBy) {
-          case "publishDateAsc":
-            orderByDirection = "asc";
-            break;
-          case "publishDateDesc":
-            orderByDirection = "desc";
-            break;
-          default:
-            break;
-        }
-      }
-      try {
-        const response = await FirebaseFirestoreService.readDocuments({
-          collection: "recipes-db",
-          queries: queries,
-          orderByField,
-          orderByDirection,
-          perPage: recipesPerPage,
-          cursorId,
-        });
+    }
+    try {
+      const response = await FirebaseFirestoreService.readDocuments({
+        collection: "recipes-db",
+        queries: queries,
+        orderByField,
+        orderByDirection,
+        perPage: recipesPerPage,
+        cursorId,
+      });
 
-        const newRecipes = response.docs.map(recipeDoc => {
-          const id = recipeDoc.id;
-          const data = recipeDoc.data();
-          data.publishDate = new Date(data.publishDate.seconds * 1000);
+      const newRecipes = response.docs.map(recipeDoc => {
+        const id = recipeDoc.id;
+        const data = recipeDoc.data();
+        data.publishDate = new Date(data.publishDate.seconds * 1000);
 
-          return {
-            ...data,
-            id,
-          };
-        });
-        if (cursorId) {
-          fetchedRecipes = [...recipes, ...newRecipes];
-        } else {
-          fetchedRecipes = [...newRecipes];
-        }
-      } catch (error) {
-        console.error(error.message);
-        throw error;
+        return {
+          ...data,
+          id,
+        };
+      });
+      if (cursorId) {
+        fetchedRecipes = [...recipes, ...newRecipes];
+      } else {
+        fetchedRecipes = [...newRecipes];
       }
-      return fetchedRecipes;
-    },
-    [categoryFilter, orderBy, recipes, recipesPerPage, user]
-  );
+    } catch (error) {
+      console.error(error.message);
+      throw error;
+    }
+    return fetchedRecipes;
+  };
   const handleRecipesPerPageChange = e => {
     const recipesPerPage = e.target.value;
     setRecipes([]);
@@ -95,6 +92,9 @@ function App() {
   const handleFetchRecipes = async (cursorId = "") => {
     try {
       const fetchedRecipes = await fetchRecipes(cursorId);
+      if (fetchedRecipes.length === recipes.length) {
+        alert("There are no new Recipes");
+      }
       setRecipes(fetchedRecipes);
     } catch (error) {
       alert(error.message);
@@ -160,7 +160,8 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [user, categoryFilter, orderBy, recipesPerPage, fetchRecipes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, categoryFilter, orderBy, recipesPerPage]);
 
   FirebaseAuthService.subscribeToAuthChanges(setUser);
   async function handleAddRecipe(newRecipe) {
@@ -171,6 +172,7 @@ function App() {
       );
       handleFetchRecipes();
       alert(`successfully create a recipe with an an ID =${response.id}`);
+      setCurrentRecipe(newRecipe);
     } catch (error) {
       alert(error.message);
     }
@@ -247,6 +249,15 @@ function App() {
                         <div className="unpublished">UNPUBLISHED</div>
                       ) : null}
                       <div className="recipe-name">{recipe.name}</div>
+                      <div className="recipe-image-box">
+                        {recipe.imageUrl ? (
+                          <img
+                            className="recipe-image"
+                            src={recipe.imageUrl}
+                            alt={recipe.name}
+                          />
+                        ) : null}
+                      </div>
                       <div className="recipe-field">
                         Category:{lookupCategoryLabel(recipe.category)}
                       </div>
@@ -280,13 +291,13 @@ function App() {
               >
                 <option value="3">3</option>
                 <option value="6">6</option>
-                <option value="9">7</option>
+                <option value="9">9</option>
               </select>
             </label>
             <div className="pagination">
               <button
                 type="button"
-                className="primary-buton"
+                className="primary-button"
                 onClick={handleLoadMoreRecipesClick}
               >
                 Load More Recipes
