@@ -28,7 +28,7 @@ jobs:
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FIR_RECIPES_87AE1 }}"
           channelId: live
           projectId: fir-recipes-87ae1
- functions_deploy:
+  functions_deploy:
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout repo
